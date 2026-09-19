@@ -171,3 +171,22 @@ curl -sS -X POST -H "Authorization: Bearer $TOK" -H "Content-Type: application/z
    用 `ditto -c -k --sequesterRsrc`（本仓库脚本已经这么做了）。
 5. **`spctl` 显示 rejected 不是错误** —— 那是「未公证」的意思，ad-hoc 签名必然如此。
    用户首次启动用右键「打开」即可；要彻底消除只能买开发者账号做正式签名 + 公证。
+6. **升级时「双击没反应」＝单实例锁，不是签名问题**。`src/app/main.js` 用了
+   `app.requestSingleInstanceLock()`，而锁是按 **userData 目录**算的 —— 本 App 把
+   userData 固定成 `~/Library/Application Support/DSH/electron`，所以**任何位置的两份
+   `DSH.app` 共用同一把锁**。旧副本还在跑时，新版一启动就拿不到锁并
+   `app.quit()`（**零输出、无弹窗**），用户只会看到「什么都没发生」。
+
+   排查：
+   ```bash
+   ls -l ~/Library/Application\ Support/DSH/electron/SingletonLock   # → MacBookAir.lan-<pid>
+   pgrep -fl "DSH.app/Contents/MacOS/Electron"                        # 正在跑的那份的完整路径
+   ```
+   处理：**先彻底退出旧实例，再打开新版**；长期方案是只保留一份 `DSH.app`。
+
+   验证某份包本身是否正常（绕开锁，用独立数据目录跑）：
+   ```bash
+   DSH_SUPPORT_DIR=$(mktemp -d) DSH_PORT=3499 DSH.app/Contents/MacOS/Electron
+   ```
+
+   > 发版前建议实测一次：**不要**在旧实例还跑着的时候验证新包，否则会误判成签名问题。
