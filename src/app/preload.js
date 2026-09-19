@@ -10,6 +10,7 @@ contextBridge.exposeInMainWorld('dsh', {
   openBrowser: () => ipcRenderer.invoke('open-browser'),
   openLogs: () => ipcRenderer.invoke('open-logs'),
   readLogTail: () => ipcRenderer.invoke('read-log-tail'),
+  showVersionInfo: () => ipcRenderer.invoke('show-version-info'),
   onStatus: (cb) => {
     ipcRenderer.on('status', (_event, status) => cb(status));
   },

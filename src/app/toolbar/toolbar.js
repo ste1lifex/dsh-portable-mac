@@ -10,7 +10,6 @@ const btnBalance = $('btn-balance');
 const dot = $('dot');
 const statusEl = $('status');
 const balanceEl = $('balance');
-const dlg = $('dlg');
 
 let running = false;
 let busy = false;
@@ -118,58 +117,14 @@ $('btn-browser').addEventListener('click', () => window.dsh.openBrowser());
 $('btn-logs').addEventListener('click', () => window.dsh.openLogs());
 
 // ---------------------------------------------------------------------------
-// 版本信息弹窗
+// 版本信息：交给主进程单独开一个正常尺寸的窗口（version.html）
+//
+// 这里**不能**再用 <dialog>：本控制条是一个只有 46px 高的 WebContentsView，
+// 而 dialog 的 UA 默认样式带 `max-height: calc(100% - 6px - 2em)`，
+// 在 46px 的视口里算下来只剩约 8px —— 内容被压成一条缝，什么都读不到。
 // ---------------------------------------------------------------------------
 
-let dialogText = '';
-
-$('btn-info').addEventListener('click', async () => {
-  const s = await window.dsh.getStatus();
-  const logs = await window.dsh.readLogTail();
-  applyStatus(s);
-
-  $('i-shell').textContent = s.shellVersion ? 'v' + s.shellVersion : '(未知)';
-  $('i-core').textContent = s.coreVersion ? '@deepseek-ai/dsh ' + s.coreVersion : '(未知)';
-  $('i-port').textContent = String(s.port || '');
-  $('i-home').textContent = s.home || 'dsh-home/';
-
-  const plugins = (s.plugins || [])
-    .map((p) => `<tr><td>${p.label}</td><td>${p.name} @ ${p.version}</td></tr>`)
-    .join('');
-  $('i-plugins').innerHTML = plugins || '<tr><td>(无)</td><td></td></tr>';
-
-  const errLog = (logs && (logs.err || '').trim()) || '(空)';
-  $('i-log').textContent = errLog;
-
-  // 「复制全部」用的纯文本（与 Windows 版「复制全部」一致的做法）
-  dialogText = [
-    'DSH 版本信息',
-    `桌面外壳：${$('i-shell').textContent}`,
-    `核心：${$('i-core').textContent}`,
-    `端口：${$('i-port').textContent}`,
-    `数据目录：${$('i-home').textContent}`,
-    '',
-    '插件：',
-    ...(s.plugins || []).map((p) => `  ${p.label}  ${p.name} @ ${p.version}`),
-    '',
-    '错误日志（末尾）：',
-    errLog,
-  ].join('\n');
-
-  dlg.showModal();
-});
-
-$('btn-copy').addEventListener('click', async () => {
-  const text = window.getSelection && String(window.getSelection()).trim()
-    ? String(window.getSelection())
-    : dialogText;
-  const r = await window.dsh.copyText(text);
-  const btn = $('btn-copy');
-  btn.textContent = r && r.ok ? '已复制' : '复制失败';
-  setTimeout(() => { btn.textContent = '复制全部'; }, 1200);
-});
-
-$('btn-close').addEventListener('click', () => dlg.close());
+$('btn-info').addEventListener('click', () => window.dsh.showVersionInfo());
 
 // ---------------------------------------------------------------------------
 // 启动时先问一遍当前主题，避免浅色模式下先闪一下深色

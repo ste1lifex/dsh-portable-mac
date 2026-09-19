@@ -113,25 +113,8 @@
       .sep { display: none; }
     }
 
-    /* ---- 版本信息弹窗 ---- */
-    dialog {
-      border: 1px solid var(--border); border-radius: 12px;
-      background: var(--card-bg); color: var(--text-primary);
-      max-width: 760px; width: 80%; padding: 18px;
-    }
-    dialog::backdrop { background: rgba(0, 0, 0, .5); }
-    dialog h2 { margin: 0 0 10px; font-size: 14px; font-weight: 600; }
-    dialog table { width: 100%; border-collapse: collapse; font-size: 12.5px; user-select: text; }
-    dialog td { padding: 4px 6px; border-bottom: 1px solid var(--border); vertical-align: top; }
-    dialog td:first-child { color: var(--text-dim); white-space: nowrap; width: 96px; }
-    dialog pre {
-      max-height: 260px; overflow: auto; margin: 0;
-      background: var(--window-bg); padding: 10px; border-radius: 8px;
-      font: 11.5px/1.5 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-      user-select: text; white-space: pre-wrap; word-break: break-all;
-      border: 1px solid var(--border);
-    }
-    .row { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+    /* 版本信息不在本控制条里渲染（本视图只有 46px 高，dialog 会被压成一条缝），
+       改由主进程开一个独立窗口 version.html。 */
   </style>
 </head>
 <body>
@@ -180,24 +163,6 @@
     <span>余额</span>
     <span class="val" id="balance">—</span>
   </button>
-
-  <dialog id="dlg">
-    <h2>版本信息</h2>
-    <table>
-      <tr><td>桌面外壳</td><td id="i-shell">-</td></tr>
-      <tr><td>核心</td><td id="i-core">-</td></tr>
-      <tr><td>端口</td><td id="i-port">-</td></tr>
-      <tr><td>数据目录</td><td id="i-home">-</td></tr>
-    </table>
-    <h2 style="margin-top:16px">插件</h2>
-    <table id="i-plugins"></table>
-    <h2 style="margin-top:16px">错误日志（末尾，可选中复制）</h2>
-    <pre id="i-log">-</pre>
-    <div class="row">
-      <button id="btn-copy">复制全部</button>
-      <button id="btn-close">关闭</button>
-    </div>
-  </dialog>
 
   <script src="toolbar.js"></script>
 </body>

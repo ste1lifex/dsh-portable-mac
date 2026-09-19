@@ -51,6 +51,7 @@ try { fs.mkdirSync(path.join(SUPPORT, 'electron'), { recursive: true }); } catch
 let win = null;
 let toolbarView = null;
 let contentView = null;
+let versionWin = null;
 let serverProc = null;
 let weStartedServer = false;
 let authenticatedUrl = null;
@@ -60,6 +61,7 @@ let lastStatus = { running: false, url: null, message: '未启动', phase: 'idle
 let currentTheme = { dark: nativeTheme.shouldUseDarkColors, tokens: {} };
 let pageThemeKnown = false;
 let themeSent = '';
+let versionThemeSent = '';
 
 // DeepSeek 官方余额（右下角）
 let currentBalance = { display: '—', tooltip: 'DeepSeek 官方余额\n正在查询…', low: false };
@@ -74,6 +76,23 @@ let lastBalanceAttempt = 0;
 function log(...a) { console.log('[dsh-desktop]', ...a); }
 function readJsonSafe(p) { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch { return null; } }
 function appendLog(file, chunk) { try { fs.appendFileSync(file, chunk); } catch { /* ignore */ } }
+
+/**
+ * 日志净化：pnpm / node 的输出里可能带 ANSI 颜色码、光标控制（\r、\b）、
+ * 以及各类控制字符；原样塞进界面就会显示成「乱码」。
+ * 这里统一剥掉转义序列与控制字符，只保留可见文本、换行和制表符。
+ */
+function sanitizeLog(text, maxLines = 40) {
+  const s = String(text == null ? '' : text)
+    .replace(/\x1b\[[0-9;?]*[ -/]*[@-~]/g, '')   // CSI 序列（颜色、光标）
+    .replace(/\x1b[@-Z\\-_]/g, '')               // 其余 Fe 转义
+    .replace(/\x1b\][^\x07\x1b]*(?:\x07|\x1b\\)/g, '') // OSC（如设置标题）
+    // eslint-disable-next-line no-control-regex
+    .replace(/[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]/g, '') // 控制字符（保留 \t \n \r）
+    .replace(/\r\n?/g, '\n');                    // 统一换行，避免 \r 覆盖显示
+  const lines = s.split('\n');
+  return (lines.length > maxLines ? lines.slice(-maxLines) : lines).join('\n');
+}
 
 function chmodX(target) {
   try { if (fs.existsSync(target)) fs.chmodSync(target, 0o755); } catch (e) { log('chmod 失败', target, e.message); }
@@ -198,6 +217,14 @@ const THEME_PROBE = `(() => {
 function broadcastTheme() {
   if (win && !win.isDestroyed()) {
     win.setBackgroundColor(currentTheme.dark ? '#151517' : '#ffffff');
+  }
+  if (versionWin && !versionWin.isDestroyed()) {
+    versionWin.setBackgroundColor(currentTheme.dark ? '#151517' : '#ffffff');
+    const vpayload = JSON.stringify(currentTheme);
+    if (vpayload !== versionThemeSent) {
+      versionThemeSent = vpayload;
+      versionWin.webContents.send('theme', currentTheme);
+    }
   }
   if (!toolbarView || toolbarView.webContents.isDestroyed()) return;
   const payload = JSON.stringify(currentTheme);
@@ -607,6 +634,42 @@ function createWindow() {
   win.on('closed', () => { win = null; toolbarView = null; contentView = null; });
 }
 
+/**
+ * 版本信息窗口。
+ *
+ * 不能用工具栏里的 <dialog>：工具栏是一个只有 TOOLBAR_HEIGHT(46px) 高的
+ * WebContentsView，而浏览器给 dialog 的默认样式带
+ * `max-height: calc(100% - 6px - 2em)` —— 在 46px 的视口里算下来只剩约 8px，
+ * 内容被压成一条缝，用户什么都读不到（还会以为「乱码」）。
+ * 所以单独开一个正常尺寸的窗口，文字可滚动、可选中复制。
+ */
+function showVersionInfo() {
+  if (versionWin && !versionWin.isDestroyed()) {
+    versionWin.show();
+    versionWin.focus();
+    versionWin.webContents.reload();
+    return { ok: true };
+  }
+
+  versionWin = new BrowserWindow({
+    width: 820, height: 680, minWidth: 560, minHeight: 380,
+    title: 'DSH 版本信息',
+    parent: win && !win.isDestroyed() ? win : undefined,
+    show: false,
+    backgroundColor: currentTheme.dark ? '#151517' : '#ffffff',
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+    },
+  });
+
+  versionWin.loadFile(path.join(__dirname, 'version.html'));
+  versionWin.once('ready-to-show', () => versionWin.show());
+  versionWin.on('closed', () => { versionWin = null; });
+  return { ok: true };
+}
+
 function buildMenu() {
   // macOS 没有应用菜单时复制/粘贴等快捷键不可用，必须显式构建
   const template = [
@@ -619,6 +682,7 @@ function buildMenu() {
         { label: '在浏览器中打开', click: () => authenticatedUrl && shell.openExternal(authenticatedUrl) },
         { label: '打开数据目录', click: () => shell.openPath(SUPPORT) },
         { label: '打开日志目录', click: () => shell.openPath(LOGS) },
+        { label: '版本信息…', click: () => showVersionInfo() },
         { type: 'separator' },
         { role: 'hide' }, { role: 'hideOthers' }, { role: 'unhide' },
         { type: 'separator' },
@@ -684,20 +748,82 @@ function registerIpc() {
   ipcMain.handle('reload-ui', () => { if (contentView) contentView.webContents.reload(); return { ok: true }; });
   ipcMain.handle('open-browser', () => { if (authenticatedUrl) shell.openExternal(authenticatedUrl); return { ok: true }; });
   ipcMain.handle('open-logs', () => { shell.openPath(LOGS); return { ok: true }; });
+  ipcMain.handle('show-version-info', () => showVersionInfo());
+
   ipcMain.handle('read-log-tail', () => {
+    // 只读末尾 64KB：日志可能很大，整份读进来既慢又占内存。
+    // 再经 sanitizeLog 剥掉 ANSI / 控制字符，避免界面里出现「乱码」。
+    const read = (file) => {
+      try {
+        const st = fs.statSync(file);
+        const start = Math.max(0, st.size - 64 * 1024);
+        const len = st.size - start;
+        if (len <= 0) return '';
+        const fd = fs.openSync(file, 'r');
+        try {
+          const buf = Buffer.alloc(len);
+          fs.readSync(fd, buf, 0, len, start);
+          return sanitizeLog(buf.toString('utf8'), 40);
+        } finally { fs.closeSync(fd); }
+      } catch { return ''; }
+    };
     try {
-      return {
-        ok: true,
-        err: fs.readFileSync(ERR_LOG, 'utf8').split('\n').slice(-40).join('\n'),
-        out: fs.readFileSync(OUT_LOG, 'utf8').split('\n').slice(-40).join('\n'),
-      };
+      return { ok: true, err: read(ERR_LOG), out: read(OUT_LOG), logsDir: LOGS };
     } catch (e) { return { ok: false, error: e.message }; }
   });
 }
 
 // ---------------------------------------------------------------------------
 
+/**
+ * 找出「正在占用单实例锁」的那份 DSH。
+ * Electron 把锁写成 userData/SingletonLock 符号链接，内容形如 `MacBookAir.lan-12345`。
+ * 我们顺着这个 pid 反查它的可执行文件路径，好在弹窗里直接告诉用户关哪一个 ——
+ * 否则用户只会看到「双击没反应」，根本不知道是另一个副本在跑。
+ */
+function findRunningInstance() {
+  try {
+    const lock = fs.readlinkSync(path.join(app.getPath('userData'), 'SingletonLock'));
+    const pid = Number(String(lock).trim().split('-').pop());
+    if (!Number.isInteger(pid) || pid <= 0) return null;
+    const r = spawnSync('/bin/ps', ['-p', String(pid), '-o', 'command='], { encoding: 'utf8' });
+    const command = String(r.stdout || '').trim();
+    const m = command.match(/^(.+?\.app)\/Contents\/MacOS\//);
+    return { pid, appPath: m ? m[1] : null, command };
+  } catch { return null; }
+}
+
 if (!app.requestSingleInstanceLock()) {
+  // 两份 DSH 共用同一个 userData 目录（~/Library/Application Support/DSH/electron），
+  // 而单实例锁是按 userData 算的 —— 所以任何位置的两份 DSH.app 都抢同一把锁。
+  // 抢不到就直接 app.quit() 的话，用户看到的是「双击完全没反应」，
+  // 极容易误判成「包坏了 / 签名有问题」。这里必须显式说明。
+  const other = findRunningInstance();
+  const lines = [
+    '已经有一个 DSH 在运行，所以这次启动被忽略了。',
+    '',
+    '两份 DSH 共用同一个数据目录，同一时间只能开一个：',
+    '后启动的这一个拿不到锁，会直接退出（所以看起来「双击没反应」）。',
+  ];
+  if (other && other.appPath) {
+    lines.push('', '正在运行的副本：', `    ${other.appPath}`, `    （进程 PID ${other.pid}）`);
+  } else if (other) {
+    lines.push('', `正在运行的进程：PID ${other.pid}`);
+  }
+  lines.push(
+    '',
+    '请先退出正在运行的 DSH，再重新打开这一个：',
+    '  · 在它的窗口里按 ⌘Q；或',
+    '  · 菜单栏「DSH」→「退出 DSH」；或',
+    '  · 右键 Dock 里的 DSH 图标 →「退出」。',
+    '',
+    '确认退干净（Dock 里没有 DSH 图标）后，再重新双击本 App。',
+    '',
+    '提示：最好只保留一份 DSH.app。桌面 / 下载 / 应用程序各留一份会一直互相抢锁。',
+  );
+  try {
+    dialog.showErrorBox('DSH 已经在运行', lines.join('\n'));
+  } catch { /* 弹窗失败也要继续退出，不能卡住 */ }
   app.quit();
 } else {
   app.on('second-instance', () => {
