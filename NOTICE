@@ -1,0 +1,12 @@
+DSH Portable · macOS (Apple Silicon)
+Copyright (c) 2026 Stellifex
+
+本仓库是 DeepSeek Harness（DSH）的第三方 macOS 桌面壳与打包工具链，
+构建产物（DSH.app）内含或分发以下第三方组件，它们各自遵循其发布许可证：
+
+* DeepSeek Harness (DSH) —— MIT License, Copyright (c) 2026 DeepSeek
+  https://github.com/deepseek-ai/deepseek-harness
+* 随包 DSH 插件（@linxin666/dsh-web-all、dsh-free-search 等）—— 见各自 npm 包内 LICENSE
+* Electron —— MIT License, https://github.com/electron/electron
+  （构建产物内含，第三方许可见 DSH.app/Contents/Resources/electron-licenses/）
+* Node.js —— MIT License 及其第三方许可, https://nodejs.org
