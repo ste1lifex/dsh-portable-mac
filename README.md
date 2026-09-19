@@ -9,44 +9,53 @@
 > (`src/Info.plist`, `src/DSH.icns`), the initial data (`seed/`) and the packaging toolchain
 > (`tools/`) which downloads Electron and Node from their **official** sources and produces
 > `dist/DSH-mac-arm64.zip` containing a drag-and-drop `DSH.app`.
-> The prebuilt `DSH.app` zip (252 MB) is published as a **GitHub Release asset** (too large for the repo:
-> GitHub caps single files at 100 MB and the app ships a 116 MB Node binary + Electron).
+> The prebuilt `DSH.app` zip (481 MB, **offline-capable**) is published as a **GitHub Release asset** (too large for the repo:
+> GitHub caps single files at 100 MB and the app ships a 116 MB Node binary + Electron + a 320 MB offline store).
 > MIT licensed; DSH itself is MIT by DeepSeek.
 
 ---
 
 ## 用法一：下载现成包（推荐给最终用户）
 
-> ### ⚠️ 双击 `DSH.app` 提示「已损坏」、双击 `安装.command` 提示「Apple 无法验证」？
-> 两个问题的根因相同：**包在非 macOS 机器上构建/改过 → 包内签名失效**，
-> 加上**浏览器下载的隔离标记**。`codesign` 是 macOS 独有工具，所以这一步必须在 Mac 上做
-> （ad-hoc 临时签名，不需要开发者账号）。终端三行即可修好：
+> ### ✅ 现在的发行包是**在 macOS 上构建并签名**的（不再需要你手动补签名）
+> 旧的 Windows 组装包签名失效，双击必然报「已损坏」。现在这个包由
+> `tools/build-app-mac.sh` 在 Mac 上 **构建 → ad-hoc 签名 → `codesign --verify` 校验通过**，
+> 签名在 `ditto` 打包/解压后依然有效；并且**内置离线依赖缓存**，首启全程不联网。
+>
+> 你仍可能被拦一次：浏览器下载会给文件打上隔离标记（`com.apple.quarantine`），
+> 首次打开提示「Apple 无法验证」（这是未公证提示，不是包损坏）。放行任选其一：
 >
 > ```bash
 > cd ~/Downloads/你的解压目录
-> xattr -dr com.apple.quarantine .
-> codesign --force --deep --sign - DSH.app && open DSH.app
+> xattr -dr com.apple.quarantine . && open DSH.app   # 解隔离后直接打开
+> bash 安装.command                                   # 或：解隔离 → 修权限 → 校验签名 → 安装
 > ```
 >
-> 或者别双击安装脚本，直接 `bash 安装.command`；仓库里也有脚本一步搞定：
-> `bash tools/fix-and-sign.sh /Applications/DSH.app`。
 > **`.dmg` 不解决这个问题**（dmg 里还是同一个 App）。
-> macOS 侧的完整操作手册（含从源码构建已签名包、修 Gitea 里 `macos/DSH.app` 的签名、
-> 验证清单、发布步骤）：[`tools/README-mac.md`](tools/README-mac.md)。
+> macOS 侧的完整操作手册（含从源码构建已签名包、重新生成离线缓存、
+> 修 Gitea 里 `macos/DSH.app` 的签名、验证清单、发布步骤）：[`tools/README-mac.md`](tools/README-mac.md)。
 
-1. 打开本仓库的 **Releases**，下载 `DSH-portable-0.1.5-rc.2-mac-arm64.zip`（约 252MB）。
+1. 打开本仓库的 **Releases**，下载 `DSH-portable-0.1.5-rc.2-mac-arm64.zip`（约 481MB，**内置离线依赖缓存**）。
 2. 解压得到 `DSH.app`，**直接拖进「应用程序」**（或任意目录）。
 3. 第一次启动**建议先跑一次 `安装.command`**：它会解除下载隔离标记、修好可执行权限、
-   做一次 **ad-hoc 临时签名**（约 1–3 分钟，无需开发者账号），然后可选择把 App 装进
-   「应用程序」并启动。
-   > 不想跑脚本也行：右键 `DSH.app` →「打开」→「打开」；但若提示「已损坏」，
-   > 说明隔离标记还在，此时仍需 `安装.command`（命令：`xattr -dr com.apple.quarantine DSH.app && codesign --force --deep --sign - DSH.app`）。
-4. 首次启动会在 `~/Library/Application Support/DSH/` 展开初始数据并安装依赖
-   （随包不带离线缓存时**需要联网**，约 1–3 分钟；顶部控制条会显示进度）。
+   **校验签名（本包已签名，通常直接跳过重签）**，然后可选择把 App 装进「应用程序」并启动。
+   > 不想跑脚本也行：右键 `DSH.app` →「打开」→「打开」；正常发行包不会提示「已损坏」，
+   > 真出现了才需要补一次 `codesign --force --deep --sign - DSH.app`。
+4. 首次启动会在 `~/Library/Application Support/DSH/` 展开初始数据，并从**包内离线缓存**
+   重建依赖 —— **全程不需要联网**（约 1–2 分钟；顶部控制条会显示进度）。
 
 细节见 [`使用说明.md`](使用说明.md)。
 
 ## 用法二：自己构建（推荐给开发者）
+
+**在 macOS 上（推荐，一步产出已签名包，不需要 Node）：**
+
+```bash
+bash tools/build-offline-store.sh    # 可选：生成并自检离线依赖缓存 runtime/store.tar.gz
+bash tools/build-app-mac.sh          # 组装 + ad-hoc 签名 + ditto 打包 → dist/DSH-mac-arm64.zip
+```
+
+**跨平台（Windows/Linux 也能跑，产出未签名包，需要在 Mac 上补签）：**
 
 只需要 **Node 18+** 和系统自带的 `tar`（Windows 上用 Git Bash / 自带 bsdtar 均可）：
 
@@ -71,13 +80,17 @@ node tools/build-app.mjs --electron-zip /path/electron-v44.3.0-darwin-arm64.zip 
 node tools/build-app.mjs --skip-fetch                            # 完全用 .cache/ 与 runtime/
 ```
 
-想要**离线首启**（把 264MB 的 pnpm 离线缓存一起打进包）：
+想要**离线首启**（把 pnpm 离线缓存一起打进包 —— 正式发行包就是这么做的）：
 
 ```bash
-# 把 store.tar.gz（由一台已装好依赖的机器 `tar -czf store.tar.gz -C <数据目录> store` 生成）
-# 放到 runtime/ 下，再构建即可 —— assemble 会自动把它打进 DSH.app
-cp store.tar.gz runtime/ && node tools/build-app.mjs --skip-fetch
+bash tools/build-offline-store.sh    # macOS：用包内 node+pnpm 生成 runtime/store.tar.gz
+bash tools/build-app-mac.sh          # 再构建一次，store.tar.gz 会自动打进 DSH.app
 ```
+
+`build-offline-store.sh` 会在一个干净副本上用 `--offline` 复装自检：
+只有核心与 Web 插件都 `downloaded 0`（全部命中缓存）才算通过。
+跨平台构建则手工把 `store.tar.gz` 放到 `runtime/` 下，再
+`node tools/build-app.mjs --skip-fetch`。
 
 版本单一数据源在 [`tools/versions.json`](tools/versions.json)（Electron / Node / pnpm / DSH）。
 
@@ -98,12 +111,15 @@ dsh-portable-mac/
 │  ├─ plugin-track.json     版本面板与自动升级用的追踪清单
 │  └─ .env.example          API Key 模板
 ├─ tools/
-│  ├─ build-app.mjs         一键构建（取运行时 → 组装 → 打包）
+│  ├─ build-app-mac.sh      macOS 一键构建（组装 + ad-hoc 签名 + ditto 打包）★ 正式发行用
+│  ├─ build-offline-store.sh 生成并自检离线依赖缓存 runtime/store.tar.gz
+│  ├─ build-app.mjs         跨平台构建（取运行时 → 组装 → 打包；产出**未签名**包）
+│  ├─ fix-and-sign.sh       修复/重签已有的 DSH.app（解隔离 → 修权限 → 深签 → 校验）
 │  ├─ fetch-runtime.mjs     官方源下载 Electron/Node/pnpm + 铺 runtime/ + seed
 │  ├─ assemble.mjs          组装 DSH.app 并打成保留符号链接的 zip
 │  ├─ ziputil.mjs           极简 ZIP 读写（支持 Unix 符号链接与权限位）
 │  └─ versions.json         版本单一数据源
-├─ 安装.command             解隔离 → 修权限 → ad-hoc 签名 → 可选装进「应用程序」
+├─ 安装.command             解隔离 → 修权限 → 校验签名 → 可选装进「应用程序」
 └─ 使用说明.md              最终用户文档（安装 / 首次启动 / 认证地址 / 排错）
 ```
 
@@ -136,8 +152,9 @@ dsh-portable-mac/
 ## 安全
 
 - 仓库**不含**任何 API Key、凭证、聊天记录、附件（`seed/` 已剔除；`.gitignore` 兜底）。
-- App 未做 Apple 开发者签名（需要 99 美元/年账号 + 一台 Mac），`安装.command` 使用
-  **ad-hoc 临时签名**，足以本机使用；想彻底消除「无法验证开发者」警告只能买账号做公证。
+- App 未做 Apple 开发者签名（需要 99 美元/年账号 + 一台 Mac）。发行包**在 macOS 上构建时
+  就做了 ad-hoc 签名**，足以保证包未损坏、本机正常使用；想彻底消除「无法验证开发者」
+  警告只能买账号做正式签名 + 公证。
 - 默认权限预设 `danger-full-access`（agent 可直接执行命令）；如需收紧请改
   `dsh-home/settings.yaml` 的 `permission.defaultPreset`。
 
