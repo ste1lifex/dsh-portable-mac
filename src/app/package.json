@@ -1,0 +1,8 @@
+{
+  "name": "dsh-desktop-mac",
+  "productName": "DSH",
+  "version": "0.1.5",
+  "description": "DeepSeek Harness desktop shell for macOS (Apple Silicon)",
+  "main": "main.js",
+  "private": true
+}

@@ -1,0 +1,44 @@
+# =============================================================================
+#  DSH 便携版（macOS / Apple Silicon）发行仓库 .gitignore
+#
+#  约定：git 只放「骨架」—— Electron 壳源码、打包脚本、初始数据 seed、文档；
+#        Electron / Node / 离线依赖缓存等大体积载荷一律不入库：
+#          · Electron 与 Node 由 tools/build-app.mjs 从官方源下载（缓存在 .cache/）
+#          · 离线缓存 store.tar.gz（~264MB）可选，放 runtime/ 后会被打进包里
+# =============================================================================
+
+# ---- 构建输入 / 产物 ----
+/.cache/
+/runtime/
+/dist/
+*.zip
+
+# ---- 密钥（绝不入库）----
+**/.env
+!.env.example
+seed/dsh-home/.credentials.yaml
+
+# ---- 本机运行态数据（各机器独立）----
+seed/dsh-home/sessions/
+seed/dsh-home/storages/
+seed/dsh-home/attachments/
+seed/dsh-home/task-board/
+seed/dsh-home/skin-center/
+seed/dsh-home/skins/
+seed/dsh-home/dsh-usage/
+seed/dsh-home/dsh-session-archive/
+seed/dsh-home/llm-deepseek/
+seed/dsh-home/.repair-backups/
+seed/dsh-home/.anonymous-user-id
+seed/dsh-home/pet.json
+seed/dsh-home/webview2-data/
+seed/dsh-home/profiles/*/node_modules/
+seed/dsh-home/profiles/web/.dsh-module-fallback
+seed/dsh-home/profiles/web/cordis.patch.yml.bak-plugin-manager
+seed/dsh-home/runtimes/
+
+# ---- 系统 / 编辑器 ----
+.DS_Store
+Thumbs.db
+node_modules/
+*.log

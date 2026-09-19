@@ -1,0 +1,10 @@
+# Your patch layer for this dsh profile, applied after every bundle layer:
+# a top-level YAML array of loader patch entries (id-targeted config
+# overrides, disables, and insert lists; `!!js` expressions allowed).
+
+# Perlica (佩丽卡) desktop pet: host half registers /api/dsh-pet-perlica/*
+# routes and projects session activity; the dsh.client half is discovered
+# from this entry and served to the browser automatically.
+- insert:
+    - id: pet-perlica
+      name: 'dsh-pet-perlica'

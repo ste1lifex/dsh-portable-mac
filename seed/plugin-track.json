@@ -1,0 +1,6 @@
+{
+  "plugins": [
+    { "name": "@linxin666/dsh-web-all", "label": "Web UI 全家桶" },
+    { "name": "dsh-free-search", "label": "Free Search 联网搜索" }
+  ]
+}

@@ -1,0 +1,27 @@
+# =============================================================================
+#  DSH 便携版（macOS）发行仓库 .gitattributes
+#
+#  · 仓库内统一 LF；shell 脚本（.command/.sh）检出时保持 LF 且需要可执行位
+#  · .icns / .png / .webp 是二进制，禁止任何换行符转换
+#  · seed 里的 pnpm-lock.yaml 会被 pnpm 逐字节比对（--frozen-lockfile），
+#    因此锁文件一律按原样入库
+# =============================================================================
+
+*.command text eol=lf
+*.sh      text eol=lf
+*.mjs     text eol=lf
+*.js      text eol=lf
+*.json    text eol=lf
+*.md      text eol=lf
+*.yml     text eol=lf
+*.yaml    text eol=lf
+*.html    text eol=lf
+
+*.icns  binary
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.webp  binary
+*.woff  binary
+*.woff2 binary
+*.ttf   binary
