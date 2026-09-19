@@ -9,7 +9,7 @@
 > (`src/Info.plist`, `src/DSH.icns`), the initial data (`seed/`) and the packaging toolchain
 > (`tools/`) which downloads Electron and Node from their **official** sources and produces
 > `dist/DSH-mac-arm64.zip` containing a drag-and-drop `DSH.app`.
-> The prebuilt zip is published as a **GitHub Release asset** (too large for the repo:
+> The prebuilt `DSH.app` zip (252 MB) is published as a **GitHub Release asset** (too large for the repo:
 > GitHub caps single files at 100 MB and the app ships a 116 MB Node binary + Electron).
 > MIT licensed; DSH itself is MIT by DeepSeek.
 
@@ -17,7 +17,7 @@
 
 ## 用法一：下载现成包（推荐给最终用户）
 
-1. 打开本仓库的 **Releases**，下载 `DSH-mac-arm64.zip`（约 550MB）。
+1. 打开本仓库的 **Releases**，下载 `DSH-portable-0.1.5-rc.2-mac-arm64.zip`（约 252MB）。
 2. 解压得到 `DSH.app`，**直接拖进「应用程序」**（或任意目录）。
 3. 第一次启动**建议先跑一次 `安装.command`**：它会解除下载隔离标记、修好可执行权限、
    做一次 **ad-hoc 临时签名**（约 1–3 分钟，无需开发者账号），然后可选择把 App 装进
