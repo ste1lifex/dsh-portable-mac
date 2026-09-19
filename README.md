@@ -17,6 +17,23 @@
 
 ## 用法一：下载现成包（推荐给最终用户）
 
+> ### ⚠️ 双击 `DSH.app` 提示「已损坏」、双击 `安装.command` 提示「Apple 无法验证」？
+> 两个问题的根因相同：**包在非 macOS 机器上构建/改过 → 包内签名失效**，
+> 加上**浏览器下载的隔离标记**。`codesign` 是 macOS 独有工具，所以这一步必须在 Mac 上做
+> （ad-hoc 临时签名，不需要开发者账号）。终端三行即可修好：
+>
+> ```bash
+> cd ~/Downloads/你的解压目录
+> xattr -dr com.apple.quarantine .
+> codesign --force --deep --sign - DSH.app && open DSH.app
+> ```
+>
+> 或者别双击安装脚本，直接 `bash 安装.command`；仓库里也有脚本一步搞定：
+> `bash tools/fix-and-sign.sh /Applications/DSH.app`。
+> **`.dmg` 不解决这个问题**（dmg 里还是同一个 App）。
+> macOS 侧的完整操作手册（含从源码构建已签名包、修 Gitea 里 `macos/DSH.app` 的签名、
+> 验证清单、发布步骤）：[`tools/README-mac.md`](tools/README-mac.md)。
+
 1. 打开本仓库的 **Releases**，下载 `DSH-portable-0.1.5-rc.2-mac-arm64.zip`（约 252MB）。
 2. 解压得到 `DSH.app`，**直接拖进「应用程序」**（或任意目录）。
 3. 第一次启动**建议先跑一次 `安装.command`**：它会解除下载隔离标记、修好可执行权限、

@@ -26,6 +26,7 @@ const INFO_PLIST = path.join(ROOT, 'src', 'Info.plist');
 const ICNS = path.join(ROOT, 'src', 'DSH.icns');
 const INSTALLER = path.join(ROOT, '安装.command');
 const README = path.join(ROOT, '使用说明.md');
+const FIRSTREAD = path.join(ROOT, '首次运行必读.txt');
 
 for (const [what, p] of [['Electron zip', ELECTRON_ZIP], ['Info.plist', INFO_PLIST], ['DSH.icns', ICNS],
                          ['壳源码 app/', APP_SRC], ['安装.command', INSTALLER], ['使用说明.md', README],
@@ -141,6 +142,11 @@ log(`运行时: node + seed${hasStore ? ' + store.tar.gz' : '（不含离线缓�
 w.addBuffer('安装.command', fs.readFileSync(INSTALLER), 0o100755);
 w.addBuffer('使用说明.md', fs.readFileSync(README), 0o100644);
 stats.root = 2;
+if (fs.existsSync(FIRSTREAD)) {
+  w.addBuffer('首次运行必读.txt', fs.readFileSync(FIRSTREAD), 0o100644);
+  stats.root++;
+  console.log('已加入 首次运行必读.txt（打不开 App 时照它操作）');
+}
 
 // ---------------------------------------------------------------------------
 const res = w.finalize();
